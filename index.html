@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+	<link rel="stylesheet" href="custom.css">
+
+    <title>Конвертер валют</title>
+  </head>
+  <body>
+	<div class="container-fluid">
+		<div class="row align-items-center vh-100">
+			<div class="col-md-4 offset-md-4 mb-5">
+				<div class="alert alert-danger alert-dismissible fade" role="alert">
+					<strong>Внимание!</strong> Ваш запрос содержал ошибку.
+					<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+				<h1 id="data">Конвертер валют</h1>
+				<form class="w-100">
+					<div class="form-row">
+						<div class="form-group col-md-10">
+							<label for="inputCost">
+								Исходная сумма
+								<img src="https://storage.googleapis.com/material-icons/external-assets/v4/icons/svg/ic_content_paste_black_18px.svg">
+							</label>
+							<input type="number" class="form-control" id="inputCost" placeholder="100,00">
+						</div>
+						<div class="form-group  col-md-2">
+							<label for="inputCost">Валюта</label>
+							<select id="inputCurrency" class="form-control">
+								<option value="RUB" selected>₽</option>
+								<option value="USD">$</option>
+								<option value="EUR">€</option>
+							</select>
+						</div>
+					</div>
+					<div class="form-row">
+						<div class="form-group  col-md-10">
+							<label for="outputCost">
+								Результат в выбранной валюте
+								<img src="https://storage.googleapis.com/material-icons/external-assets/v4/icons/svg/ic_content_copy_black_18px.svg">
+							</label>
+							<input type="number" class="form-control" id="outputCost" placeholder="1,76" disabled>
+						</div>
+						<div class="form-group  col-md-2">
+							<label for="onputCost">Валюта</label>
+							<select id="outputCurrency" class="form-control">
+								<option value="RUB">₽</option>
+								<option value="USD" selected>$</option>
+								<option value="EUR">€</option>
+							</select>
+						</div>
+					</div>
+					<button type="button" class="btn btn-primary float-right" id="showShare" data-toggle="modal" data-target="#shareModalCenter">Поделиться результатом</button>
+					<!-- Modal -->
+					<div class="modal fade" id="shareModalCenter" tabindex="-1" role="dialog" aria-labelledby="shareModalCenterTitle" aria-hidden="true">
+						<div class="modal-dialog modal-dialog-centered" role="document">	
+							<div class="modal-content">
+								<div class="modal-header">
+									<h5 class="modal-title" id="exampleModalLongTitle">Поделитесь результатом рассчёта</h5>
+									<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+										<span aria-hidden="true">&times;</span>
+									</button>
+								</div>
+								<div class="modal-body">
+									<input class="form-control" id="pageUrl" type="text" placeholder="Адрес страницы…" readonly>
+								</div>
+								<div class="modal-footer">
+									<button type="button" class="btn btn-secondary" data-dismiss="modal">Закрыть</button>
+									<button type="button" class="btn btn-primary" id="copyUrl">
+										<img src="https://storage.googleapis.com/material-icons/external-assets/v4/icons/svg/ic_content_copy_white_18px.svg">
+										Копировать
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+	<script>
+		let rate;
+		let rates;
+		let xmlhttp = new XMLHttpRequest();
+			xmlhttp.onreadystatechange = function() {
+				if (this.readyState === 4 && this.status === 200) {
+					rates = JSON.parse(this.responseText);
+					calculate();
+				}
+			};
+		xmlhttp.open("GET", "https://falcon-converter.herokuapp.com/rates", true);
+		xmlhttp.send();
+		
+		const CURRENCIES = ['RUB','USD','EUR'];
+		
+		$(document).ready(function(){
+			let inVal=100, inCur='RUB', outCur='USD';
+			try{
+				let params = (new URL(window.location.href)).searchParams;
+				let inValPar = params.get('iv');
+				if (inValPar) {
+					inVal = parseFloat(inValPar);
+				}
+				let inCurPar = params.get('ic');
+				if (inCurPar) {
+					if (CURRENCIES.includes(inCurPar)) {
+						inCur = inCurPar;
+					} else {
+						throw new SyntaxError('Invalid Currency inCurPar');
+					}
+				}
+				let outCurPar = params.get('oc');
+				if (outCurPar) {
+					if (CURRENCIES.includes(outCurPar)) {
+						outCur = outCurPar;
+					} else {
+						throw new SyntaxError('Invalid Currency outCurPar');
+					}
+				}
+			} catch (error) {
+				$('.alert').addClass('show');
+				alert( error.name ); // для отладки
+				alert( error.message );
+			}
+			$('#inputCost').val(inVal);
+			$('#inputCurrency').val(inCur);
+			$('#outputCurrency').val(outCur);
+		});
+		
+		function calculate() {
+			let outputCurrency = $("#outputCurrency").val();
+			let inputCurrency = $("#inputCurrency").val();
+			if (outputCurrency === inputCurrency) {
+				rate = 1;
+			} else {
+				rate = rates[inputCurrency][outputCurrency];
+				};
+			let value = $('#inputCost').val();
+			$('#outputCost').val((value*rate).toFixed(2));
+		};
+		$('#inputCost').keyup(function(){
+			calculate();
+		});
+		$( "#inputCurrency" ).change(function() {
+			//var currency = parseInt($("#inputCurrency").val());
+			//var newCurrency = ((currency + 1) < 4) ? (currency + 1) : 1;
+			//$('#outputCurrency').val(newCurrency);
+			calculate();
+		});
+		$( "#outputCurrency" ).change(function() {
+			//var currency = parseInt($("#outputCurrency").val());
+			//var newCurrency = ((currency + 1) < 4) ? (currency + 1) : 1;
+			//$('#inputCurrency').val(newCurrency);
+			//if (parseInt($("#outputCurrency").val()) == 1) {
+			//	rate = 1;
+			//};
+			calculate();
+		});
+		$('#showShare').click(function(){
+			var pageUrl = window.location.href + '?iv=' + $('#inputCost').val() + '&ic=' + $('#inputCurrency').val() + '&oc=' + $('#outputCurrency').val();
+			$('#pageUrl').val(pageUrl);
+		});
+		$('#copyUrl').click(function(){
+			CopyToClipboard('pageUrl');
+		});
+		function CopyToClipboard(containerid) {
+		if (document.selection) { 
+			var range = document.body.createTextRange();
+			range.moveToElementText(document.getElementById(containerid));
+			range.select().createTextRange();
+			document.execCommand("Copy");
+		} else if (window.getSelection) {
+			var range = document.createRange();
+			range.selectNode(document.getElementById(containerid));
+			window.getSelection().addRange(range);
+			document.execCommand("Copy");
+			alert("text copied") 
+		}}
+	</script>
+  </body>
+</html>
